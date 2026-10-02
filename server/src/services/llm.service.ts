@@ -1,8 +1,16 @@
+const LLM_SERVICE_URL =
+  process.env.LLM_SERVICE_URL || "http://localhost:11434";
+
+const LLM_MODEL =
+  process.env.LLM_MODEL || "qwen2.5:3b";
+
 export async function generateAnswer(
   prompt: string
 ): Promise<string> {
-  const ollamaUrl = "http://localhost:11434/api/generate";
+  const ollamaUrl = `${LLM_SERVICE_URL}/api/generate`;
 
+  console.log("LLM service URL:", ollamaUrl);
+  console.log("LLM model:", LLM_MODEL);
   console.log("LLM: Sending request to Ollama...");
 
   const response = await fetch(ollamaUrl, {
@@ -11,7 +19,7 @@ export async function generateAnswer(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "qwen2.5:3b",
+      model: LLM_MODEL,
       prompt,
       stream: false,
       options: {
@@ -23,7 +31,11 @@ export async function generateAnswer(
   if (!response.ok) {
     const message = await response.text();
 
-    console.error("LLM ERROR:", response.status, message);
+    console.error(
+      "LLM ERROR:",
+      response.status,
+      message
+    );
 
     throw new Error(
       `LLM service error: ${response.status} ${message}`
