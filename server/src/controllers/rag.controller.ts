@@ -13,8 +13,9 @@ export async function askQuestion(
       });
     }
 
-    const { question } = req.body;
+    const { question, documentId } = req.body;
 
+    // Validate question
     if (
       !question ||
       typeof question !== "string" ||
@@ -25,13 +26,32 @@ export async function askQuestion(
       });
     }
 
+    // Validate documentId if provided
+    if (
+      documentId !== undefined &&
+      documentId !== null &&
+      typeof documentId !== "string"
+    ) {
+      return res.status(400).json({
+        message: "Invalid documentId",
+      });
+    }
+
+    console.log("RAG CONTROLLER QUESTION:", question);
+    console.log(
+      "RAG CONTROLLER DOCUMENT:",
+      documentId ?? "ALL DOCUMENTS"
+    );
+
     const result = await answerQuestion(
       req.userId,
-      question
+      question.trim(),
+      documentId
     );
 
     return res.status(200).json({
-      question,
+      question: question.trim(),
+      documentId: documentId ?? null,
       ...result,
     });
   } catch (error) {

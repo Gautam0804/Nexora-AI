@@ -7,6 +7,7 @@ import documentRoutes from "./routes/document.routes";
 import searchRoutes from "./routes/search.routes";
 import ragRoutes from "./routes/rag.routes";
 import queryRoutes from "./routes/query.routes";
+import aiQueryRoutes from "./routes/ai-query.routes";
 
 const app = express();
 
@@ -24,6 +25,10 @@ app.use("/api/documents", documentRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/rag", ragRoutes);
 app.use("/api/queries", queryRoutes);
+app.use(
+  "/api/ai-queries",
+  aiQueryRoutes
+);
 
 app.get("/api/health", (_req, res) => {
   res.json({

@@ -4,9 +4,92 @@ if (!API_URL) {
   throw new Error("NEXT_PUBLIC_API_URL is not configured");
 }
 
-// ================================
-// Upload Document
-// ================================
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface DocumentItem {
+  id: string;
+  name: string;
+  file_name?: string;
+  file_size?: number;
+  mime_type?: string;
+  page_count?: number;
+  chunk_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AiQueryStats {
+  count?: number;
+  totalQueries?: number;
+  total_queries?: number;
+  [key: string]: unknown;
+}
+
+export interface RagCitation {
+  documentId: string;
+  documentName: string;
+  pageNumber: number;
+  similarity: number;
+}
+
+export interface RagResponse {
+  question?: string;
+  documentId?: string | null;
+  answer: string;
+  citations: RagCitation[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Helper                                                                     */
+/* -------------------------------------------------------------------------- */
+
+async function parseResponse(response: Response) {
+  const raw = await response.text();
+
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {
+      message: raw,
+    };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Get Documents                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function getDocuments(token: string) {
+  const response = await fetch(`${API_URL}/api/documents`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  const data = await parseResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+        data.error ||
+        `Failed to fetch documents (${response.status})`
+    );
+  }
+
+  return data;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Upload Document                                                            */
+/* -------------------------------------------------------------------------- */
 
 export async function uploadDocument(
   file: File,
@@ -27,71 +110,31 @@ export async function uploadDocument(
     }
   );
 
-  const data = await response.json();
+  const data = await parseResponse(response);
 
   console.log(
-    "UPLOAD DOCUMENT STATUS:",
-    response.status
+    "========== UPLOAD DEBUG =========="
   );
 
-  console.log(
-    "UPLOAD DOCUMENT RESPONSE:",
-    data
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      data.message || "Document upload failed"
-    );
-  }
-
-  return data;
-}
-
-
-// ================================
-// Get Documents
-// ================================
-
-export async function getDocuments(
-  token: string
-) {
-  const response = await fetch(
-    `${API_URL}/api/documents`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  const data = await response.json();
-
-  console.log(
-    "GET DOCUMENTS STATUS:",
-    response.status
-  );
-
-  console.log(
-    "GET DOCUMENTS RESPONSE:",
-    data
-  );
+  console.log("STATUS:", response.status);
+  console.log("RESPONSE:", data);
+  console.log("FILE:", file.name);
+  console.log("===================================");
 
   if (!response.ok) {
     throw new Error(
       data.message ||
-        "Failed to fetch documents"
+        data.error ||
+        `Failed to upload document (${response.status})`
     );
   }
 
   return data;
 }
 
-
-// ================================
-// Delete Document
-// ================================
+/* -------------------------------------------------------------------------- */
+/* Delete Document                                                            */
+/* -------------------------------------------------------------------------- */
 
 export async function deleteDocument(
   documentId: string,
@@ -107,117 +150,64 @@ export async function deleteDocument(
     }
   );
 
-  const data = await response.json();
-
-  console.log(
-    "DELETE DOCUMENT STATUS:",
-    response.status
-  );
-
-  console.log(
-    "DELETE DOCUMENT RESPONSE:",
-    data
-  );
+  const data = await parseResponse(response);
 
   if (!response.ok) {
     throw new Error(
       data.message ||
-        "Failed to delete document"
+        data.error ||
+        `Failed to delete document (${response.status})`
     );
   }
 
   return data;
 }
 
-
-// ================================
-// Ask AI Question
-// ================================
-
-export async function askQuestion(
-  question: string,
-  token: string
-) {
-  const response = await fetch(
-    `${API_URL}/api/rag/ask`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        question,
-      }),
-    }
-  );
-
-  const data = await response.json();
-
-  console.log(
-    "ASK QUESTION STATUS:",
-    response.status
-  );
-
-  console.log(
-    "ASK QUESTION RESPONSE:",
-    data
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      data.message ||
-        "Failed to answer question"
-    );
-  }
-
-  return data;
-}
-
-
-// ================================
-// AI Query Statistics
-// ================================
+/* -------------------------------------------------------------------------- */
+/* AI Query Statistics                                                        */
+/* -------------------------------------------------------------------------- */
 
 export async function getAiQueryStats(
   token: string
-) {
-  const response = await fetch(
-    `${API_URL}/api/queries/stats`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+): Promise<AiQueryStats> {
+  const url = `${API_URL}/api/ai-queries/stats`;
 
-  const data = await response.json();
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
 
-  console.log(
-    "AI QUERY STATS STATUS:",
-    response.status
-  );
+  const data = await parseResponse(response);
 
   console.log(
-    "AI QUERY STATS RESPONSE:",
-    data
+    "========== AI QUERY STATS =========="
+  );
+
+  console.log("URL:", url);
+  console.log("STATUS:", response.status);
+  console.log("RESPONSE:", data);
+
+  console.log(
+    "===================================="
   );
 
   if (!response.ok) {
     throw new Error(
       data.message ||
-        "Failed to fetch AI query statistics"
+        data.error ||
+        `Failed to fetch AI query stats (${response.status})`
     );
   }
 
   return data;
 }
 
-
-// ================================
-// Document Preview
-// ================================
+/* -------------------------------------------------------------------------- */
+/* Document Preview                                                           */
+/* -------------------------------------------------------------------------- */
 
 export async function getDocumentPreview(
   documentId: string,
@@ -230,25 +220,70 @@ export async function getDocumentPreview(
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      cache: "no-store",
     }
   );
 
-  const data = await response.json();
+  const data = await parseResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+        data.error ||
+        `Failed to get document preview (${response.status})`
+    );
+  }
+
+  return data;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ask Nexora AI                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function askQuestion(
+  question: string,
+  token: string,
+  documentId?: string
+): Promise<RagResponse> {
+  const response = await fetch(
+    `${API_URL}/api/rag/ask`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        question,
+        documentId: documentId || undefined,
+      }),
+    }
+  );
+
+  const data = await parseResponse(response);
 
   console.log(
-    "DOCUMENT PREVIEW STATUS:",
-    response.status
+    "========== RAG DEBUG =========="
+  );
+
+  console.log("STATUS:", response.status);
+  console.log("RESPONSE:", data);
+  console.log("QUESTION:", question);
+  console.log(
+    "DOCUMENT ID:",
+    documentId || "ALL DOCUMENTS"
   );
 
   console.log(
-    "DOCUMENT PREVIEW RESPONSE:",
-    data
+    "================================"
   );
 
   if (!response.ok) {
     throw new Error(
       data.message ||
-        "Failed to generate document preview"
+        data.error ||
+        `Failed to answer question (${response.status})`
     );
   }
 

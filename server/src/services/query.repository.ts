@@ -6,12 +6,15 @@ export async function saveAiQuery(
 ) {
   await db.query(
     `
-    INSERT INTO ai_queries
-      (user_id, question)
-    VALUES
-      ($1, $2)
+      INSERT INTO ai_queries
+        (user_id, question)
+      VALUES
+        ($1, $2)
     `,
-    [userId, question]
+    [
+      userId,
+      question,
+    ]
   );
 }
 
@@ -20,9 +23,9 @@ export async function getAiQueryCount(
 ) {
   const result = await db.query(
     `
-    SELECT COUNT(*)::int AS count
-    FROM ai_queries
-    WHERE user_id = $1
+      SELECT COUNT(*)::int AS count
+      FROM ai_queries
+      WHERE user_id = $1
     `,
     [userId]
   );
