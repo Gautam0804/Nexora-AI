@@ -1,5 +1,12 @@
+const ML_SERVICE_URL =
+  process.env.ML_SERVICE_URL || "http://localhost:8000";
+
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await fetch("http://localhost:8000/embed", {
+  const url = `${ML_SERVICE_URL}/embed`;
+
+  console.log("Embedding service URL:", url);
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -22,9 +29,19 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     dimensions: number;
   };
 
+  if (!Array.isArray(data.embedding)) {
+    throw new Error("Embedding service returned an invalid embedding");
+  }
+
   if (data.dimensions !== 384) {
     throw new Error(
       `Invalid embedding dimensions: expected 384, received ${data.dimensions}`
+    );
+  }
+
+  if (data.embedding.length !== 384) {
+    throw new Error(
+      `Invalid embedding length: expected 384, received ${data.embedding.length}`
     );
   }
 
