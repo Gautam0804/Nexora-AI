@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 app = FastAPI(title="Nexora AI ML Service")
 
-model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+model = TextEmbedding(
+    model_name="BAAI/bge-small-en-v1.5"
+)
 
 
 class EmbeddingRequest(BaseModel):
@@ -21,12 +23,10 @@ def health():
 
 @app.post("/embed")
 def create_embedding(request: EmbeddingRequest):
-    embedding = model.encode(
-        request.text,
-        normalize_embeddings=True
-    )
+    embedding = list(model.embed([request.text]))[0]
+    embedding = embedding.tolist()
 
     return {
-        "embedding": embedding.tolist(),
+        "embedding": embedding,
         "dimensions": len(embedding)
     }
