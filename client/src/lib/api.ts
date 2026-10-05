@@ -289,3 +289,122 @@ export async function askQuestion(
 
   return data;
 }
+
+export interface Conversation {
+  id: string;
+  user_id: string;
+  document_id: string | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string;
+  citations: Array<{
+    documentId: string;
+    documentName: string;
+    pageNumber: number;
+    similarity: number;
+  }>;
+  created_at: string;
+}
+
+export interface ConversationWithMessages {
+  conversation: Conversation;
+  messages: ConversationMessage[];
+}
+
+export interface SendConversationMessageResponse {
+  conversation: Conversation;
+  userMessage: ConversationMessage;
+  assistantMessage: ConversationMessage;
+  answer: string;
+  citations: ConversationMessage["citations"];
+}
+
+async function conversationRequest<T>(
+  path: string,
+  token: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await fetch(`${API_URL}/api/conversations${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message || `Conversation request failed: ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+export async function getConversations(
+  token: string
+): Promise<{ conversations: Conversation[] }> {
+  return conversationRequest("/" , token);
+}
+
+export async function createConversation(
+  token: string,
+  documentId?: string,
+  title = "New conversation"
+): Promise<{ conversation: Conversation }> {
+  return conversationRequest("/", token, {
+    method: "POST",
+    body: JSON.stringify({
+      documentId: documentId || undefined,
+      title,
+    }),
+  });
+}
+
+export async function getConversation(
+  conversationId: string,
+  token: string
+): Promise<ConversationWithMessages> {
+  return conversationRequest(`/${conversationId}`, token);
+}
+
+export async function sendConversationMessage(
+  conversationId: string,
+  question: string,
+  token: string
+): Promise<SendConversationMessageResponse> {
+  return conversationRequest(`/${conversationId}/messages`, token, {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
+}
+
+export async function renameConversation(
+  conversationId: string,
+  title: string,
+  token: string
+): Promise<{ conversation: Conversation }> {
+  return conversationRequest(`/${conversationId}`, token, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function deleteConversation(
+  conversationId: string,
+  token: string
+): Promise<{ success: boolean; message: string }> {
+  return conversationRequest(`/${conversationId}`, token, {
+    method: "DELETE",
+  });
+}

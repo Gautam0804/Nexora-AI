@@ -13,9 +13,9 @@ import { saveAiQuery } from "./query.repository";
 
 import { db } from "../config/db";
 
-/* ========================================================================== */
-/* Types                                                                      */
-/* ========================================================================== */
+/* ==========================================================================
+   Types
+   ========================================================================== */
 
 interface RagCitation {
   documentId: string;
@@ -34,6 +34,17 @@ interface DocumentChunk {
   similarity?: number;
 }
 
+/**
+ * Conversation messages supplied by conversation.service.ts.
+ *
+ * These messages are NOT treated as factual sources.
+ * They are used only to understand follow-up questions.
+ */
+export interface ConversationHistoryMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 type RagIntent =
   | "summary"
   | "key_points"
@@ -41,14 +52,15 @@ type RagIntent =
   | "exact_search"
   | "general";
 
-/* ========================================================================== */
-/* MAIN RAG FUNCTION                                                          */
-/* ========================================================================== */
+/* ==========================================================================
+   MAIN RAG FUNCTION
+   ========================================================================== */
 
 export async function answerQuestion(
   userId: string,
   question: string,
-  documentId?: string
+  documentId?: string,
+  conversationHistory: ConversationHistoryMessage[] = []
 ) {
   const cleanQuestion = question.trim();
 
@@ -56,9 +68,9 @@ export async function answerQuestion(
     throw new Error("Question is required");
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Verify selected document                                                 */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Verify selected document
+     ------------------------------------------------------------------------ */
 
   if (documentId) {
     console.log(
@@ -66,17 +78,6 @@ export async function answerQuestion(
       documentId
     );
 
-    /*
-     * IMPORTANT:
-     *
-     * Use a normal string here.
-     *
-     * The previous file contained malformed escaped
-     * template-literal SQL, which caused:
-     *
-     * PostgreSQL error 42601
-     * syntax error at or near " "
-     */
     const documentResult = await db.query(
       "SELECT id, name FROM documents WHERE id = $1 AND user_id = $2 LIMIT 1",
       [
@@ -95,9 +96,9 @@ export async function answerQuestion(
     );
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Save query                                                                */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Save query
+     ------------------------------------------------------------------------ */
 
   await saveAiQuery(
     userId,
@@ -114,9 +115,14 @@ export async function answerQuestion(
     documentId ?? "ALL DOCUMENTS"
   );
 
-  /* ------------------------------------------------------------------------ */
-  /* Detect intent                                                             */
-  /* ------------------------------------------------------------------------ */
+  console.log(
+    "RAG CONVERSATION HISTORY:",
+    conversationHistory.length
+  );
+
+  /* ------------------------------------------------------------------------
+     Detect intent
+     ------------------------------------------------------------------------ */
 
   const intent = detectIntent(
     cleanQuestion
@@ -127,9 +133,9 @@ export async function answerQuestion(
     intent
   );
 
-  /* ------------------------------------------------------------------------ */
-  /* Whole document summary                                                    */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Whole document summary
+     ------------------------------------------------------------------------ */
 
   if (intent === "summary") {
     if (!documentId) {
@@ -146,9 +152,9 @@ export async function answerQuestion(
     );
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Whole document key points                                                 */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Whole document key points
+     ------------------------------------------------------------------------ */
 
   if (intent === "key_points") {
     if (!documentId) {
@@ -165,9 +171,9 @@ export async function answerQuestion(
     );
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Dates                                                                      */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Dates
+     ------------------------------------------------------------------------ */
 
   if (intent === "dates") {
     return findImportantDates(
@@ -176,9 +182,9 @@ export async function answerQuestion(
     );
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Exact search                                                               */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Exact search
+     ------------------------------------------------------------------------ */
 
   if (intent === "exact_search") {
     return exactSearch(
@@ -188,20 +194,21 @@ export async function answerQuestion(
     );
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Normal semantic RAG                                                       */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Normal semantic RAG
+     ------------------------------------------------------------------------ */
 
   return answerNormalQuestion(
     userId,
     cleanQuestion,
-    documentId
+    documentId,
+    conversationHistory
   );
 }
 
-/* ========================================================================== */
-/* INTENT DETECTION                                                           */
-/* ========================================================================== */
+/* ==========================================================================
+   INTENT DETECTION
+   ========================================================================== */
 
 function detectIntent(
   question: string
@@ -210,9 +217,9 @@ function detectIntent(
     .toLowerCase()
     .trim();
 
-  /* ------------------------------------------------------------------------ */
-  /* Summary                                                                   */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Summary
+     ------------------------------------------------------------------------ */
 
   if (
     q.includes("summarize") ||
@@ -229,9 +236,9 @@ function detectIntent(
     return "summary";
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Key points                                                                */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Key points
+     ------------------------------------------------------------------------ */
 
   if (
     q.includes("key points") ||
@@ -247,9 +254,9 @@ function detectIntent(
     return "key_points";
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* All dates / deadlines                                                     */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     All dates / deadlines
+     ------------------------------------------------------------------------ */
 
   if (
     q.includes("find dates") ||
@@ -272,9 +279,9 @@ function detectIntent(
     return "dates";
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Explicit exact search                                                     */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Explicit exact search
+     ------------------------------------------------------------------------ */
 
   if (
     q.startsWith("search ") ||
@@ -293,15 +300,8 @@ function detectIntent(
    * If a question directly contains a month,
    * year, or explicit date, treat it as an exact
    * document search.
-   *
-   * Examples:
-   *
-   * January
-   * October 2026
-   * 2026
-   * 15 October 2026
-   * 15/10/2026
    */
+
   if (
     containsExplicitDateToken(q)
   ) {
@@ -311,9 +311,9 @@ function detectIntent(
   return "general";
 }
 
-/* ========================================================================== */
-/* DATE TOKEN DETECTION                                                       */
-/* ========================================================================== */
+/* ==========================================================================
+   DATE TOKEN DETECTION
+   ========================================================================== */
 
 const MONTHS = [
   "january",
@@ -372,20 +372,21 @@ function containsExplicitDateToken(
   );
 }
 
-/* ========================================================================== */
-/* NORMAL SEMANTIC RAG                                                        */
-/* ========================================================================== */
+/* ==========================================================================
+   NORMAL SEMANTIC RAG
+   ========================================================================== */
 
 async function answerNormalQuestion(
   userId: string,
   question: string,
-  documentId?: string
+  documentId?: string,
+  conversationHistory: ConversationHistoryMessage[] = []
 ) {
   console.time("TOTAL RAG");
 
-  /* ------------------------------------------------------------------------ */
-  /* Generate embedding                                                        */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Generate embedding
+     ------------------------------------------------------------------------ */
 
   console.time("EMBEDDING");
 
@@ -399,9 +400,9 @@ async function answerNormalQuestion(
     embedding.length
   );
 
-  /* ------------------------------------------------------------------------ */
-  /* Vector search                                                             */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Vector search
+     ------------------------------------------------------------------------ */
 
   console.time("VECTOR SEARCH");
 
@@ -432,9 +433,9 @@ async function answerNormalQuestion(
     };
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* Build context                                                             */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Build document context
+     ------------------------------------------------------------------------ */
 
   const context =
     buildChunkContext(chunks);
@@ -444,93 +445,195 @@ async function answerNormalQuestion(
     context.length
   );
 
-  /* ------------------------------------------------------------------------ */
-  /* LLM prompt                                                                */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Build conversation history context
+     ------------------------------------------------------------------------ */
+
+  const conversationContext =
+    buildConversationHistoryContext(
+      conversationHistory
+    );
+
+  console.log(
+    "RAG HISTORY CONTEXT LENGTH:",
+    conversationContext.length
+  );
+
+  /* ------------------------------------------------------------------------
+     LLM prompt
+     ------------------------------------------------------------------------ */
 
   const prompt = `
 You are Nexora AI, a precise document
 question-answering assistant.
 
-Answer the user's question using ONLY
-the provided document context.
+You are answering a user inside an ongoing
+conversation.
 
-USER QUESTION:
+The document context is the authoritative
+source for factual answers.
+
+Conversation history is provided only to
+understand the user's current question and
+resolve references to earlier messages.
+
+Do NOT treat previous assistant answers as
+authoritative facts.
+
+Use the document context to verify factual
+claims.
+
+CONVERSATION HISTORY:
+
+${conversationContext}
+
+
+CURRENT USER QUESTION:
 
 ${question}
+
 
 DOCUMENT CONTEXT:
 
 ${context}
 
+
+IMPORTANT SOURCE PRIORITY:
+
+1. DOCUMENT CONTEXT
+   Use this as the factual source.
+
+2. CONVERSATION HISTORY
+   Use this only to understand context,
+   references, follow-up questions, and
+   what the user is referring to.
+
+3. PREVIOUS ASSISTANT RESPONSES
+   These are NOT authoritative facts.
+   Verify factual information against the
+   document context.
+
+
+FOLLOW-UP QUESTION HANDLING:
+
+- Resolve references such as "it", "that",
+  "this", "they", "them", "the first one",
+  "the second one", "the above", "the previous",
+  "explain more", "tell me more", "what about this",
+  and similar references using the conversation
+  history.
+
+- If the user asks a follow-up question,
+  understand what entity or topic they are
+  referring to before answering.
+
+- If the conversation history identifies the
+  subject but the document context does not
+  contain enough information about it, say that
+  the provided document does not contain enough
+  information.
+
+- Never invent a missing reference.
+
+- If a reference is genuinely ambiguous, clearly
+  state that the question is ambiguous rather than
+  guessing.
+
+
 RULES:
 
-1. Use only information from the document context.
+1. Use only information from the document context
+   for factual claims.
 
-2. Do not use outside knowledge.
+2. Use conversation history only for conversational
+   context and reference resolution.
 
-3. Do not invent facts, dates, names,
-   numbers, or explanations.
+3. Do not use outside knowledge.
 
-4. Answer exactly what the user asked.
+4. Do not invent facts, dates, names, numbers,
+   requirements, qualifications, or explanations.
 
-5. Do not mention embeddings.
+5. Answer exactly what the user asked.
 
-6. Do not mention vectors.
+6. Do not mention embeddings.
 
-7. Do not mention retrieval.
+7. Do not mention vectors.
 
-8. Do not mention chunks.
+8. Do not mention retrieval.
 
-9. Do not mention similarity scores.
+9. Do not mention chunks.
 
-10. Do not mention internal processing.
+10. Do not mention similarity scores.
 
-11. Preserve exact information from
-    the document whenever possible.
+11. Do not mention internal processing.
 
-12. If the context does not contain
-    enough information, say:
+12. Preserve exact information from the document
+    whenever possible.
 
-"The provided document does not contain
-enough information to answer this question."
+13. If the document context does not contain enough
+    information, say:
 
-13. Do not provide a generic summary
-    unless the user asks for a summary.
+"The provided document does not contain enough
+information to answer this question."
 
-14. If the user asks about skills,
-    give the required skills.
+14. Do not provide a generic summary unless the
+    user asks for a summary.
 
-15. If the user asks about requirements,
-    give the requirements.
+15. If the user asks about skills, give the
+    required skills.
 
-16. If the user asks about eligibility,
-    give the eligibility information.
+16. If the user asks about requirements, give
+    the requirements.
 
-17. If the user asks about salary,
-    give salary information.
+17. If the user asks about eligibility, give
+    the eligibility information.
 
-18. If the user asks about location,
-    give location information.
+18. If the user asks about salary, give salary
+    information.
 
-19. If the user asks about application process,
+19. If the user asks about location, give
+    location information.
+
+20. If the user asks about application process,
     give application steps.
 
-20. If the user asks about deadlines,
-    give the relevant deadlines.
+21. If the user asks about deadlines, give the
+    relevant deadlines.
 
-21. If the user asks about dates,
-    give the relevant dates.
+22. If the user asks about dates, give the
+    relevant dates.
 
-22. If the user asks about interviews,
-    give interview information.
+23. If the user asks about interviews, give
+    interview information.
+
+24. When answering a follow-up question, do not
+    unnecessarily repeat the entire previous
+    answer.
+
+25. If the user asks "why", "how", "explain",
+    or "tell me more", answer specifically about
+    the referenced subject.
+
+26. If the user asks a comparison involving
+    information from the document, compare only
+    information supported by the document.
+
+27. If the requested information exists in the
+    document but is spread across multiple
+    retrieved sections, combine the relevant
+    information accurately.
+
+28. Do not claim that information exists in the
+    document unless it is actually present in
+    the provided document context.
+
 
 ANSWER:
 `;
 
-  /* ------------------------------------------------------------------------ */
-  /* Generate answer                                                           */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Generate answer
+     ------------------------------------------------------------------------ */
 
   console.time("LLM");
 
@@ -539,9 +642,9 @@ ANSWER:
 
   console.timeEnd("LLM");
 
-  /* ------------------------------------------------------------------------ */
-  /* Citations                                                                 */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     Citations
+     ------------------------------------------------------------------------ */
 
   const citations: RagCitation[] =
     chunks.map((chunk) => ({
@@ -571,9 +674,35 @@ ANSWER:
   };
 }
 
-/* ========================================================================== */
-/* EXACT CONTENT SEARCH                                                       */
-/* ========================================================================== */
+/* ==========================================================================
+   CONVERSATION HISTORY CONTEXT
+   ========================================================================== */
+
+function buildConversationHistoryContext(
+  history: ConversationHistoryMessage[]
+): string {
+  if (!history.length) {
+    return "No previous conversation.";
+  }
+
+  return history
+    .slice(-12)
+    .map((message, index) => {
+      const role =
+        message.role === "user"
+          ? "USER"
+          : "ASSISTANT";
+
+      return `[Previous Message ${index + 1}]
+${role}:
+${message.content}`;
+    })
+    .join("\n\n");
+}
+
+/* ==========================================================================
+   EXACT CONTENT SEARCH
+   ========================================================================== */
 
 async function exactSearch(
   userId: string,
@@ -602,10 +731,10 @@ async function exactSearch(
 
   /*
    * First attempt:
-   *
    * Search the exact requested content.
    */
-  let results =
+
+  const results =
     await searchDocumentContent(
       userId,
       searchTerm,
@@ -614,11 +743,6 @@ async function exactSearch(
     );
 
   /*
-   * If the user's request contains a date,
-   * month, or year and exact search didn't find
-   * anything, don't silently fall back to
-   * semantic search.
-   *
    * Exact date searching should be deterministic.
    */
 
@@ -632,12 +756,13 @@ async function exactSearch(
   }
 
   /*
-   * Return the actual matching document content.
+   * Return actual matching document content.
    *
    * Do NOT send this through the LLM.
    *
    * This guarantees that all matches are preserved.
    */
+
   const answer = results
     .map(
       (chunk, index) =>
@@ -667,9 +792,9 @@ ${chunk.content.trim()}`
   };
 }
 
-/* ========================================================================== */
-/* SEARCH TERM EXTRACTION                                                     */
-/* ========================================================================== */
+/* ==========================================================================
+   SEARCH TERM EXTRACTION
+   ========================================================================== */
 
 function extractSearchTerm(
   question: string
@@ -678,7 +803,6 @@ function extractSearchTerm(
 
   /*
    * Remove:
-   *
    * search
    * search for
    * find
@@ -693,7 +817,6 @@ function extractSearchTerm(
 
   /*
    * Remove:
-   *
    * where is
    * where are
    */
@@ -705,7 +828,6 @@ function extractSearchTerm(
 
   /*
    * Remove:
-   *
    * all
    * the
    */
@@ -727,19 +849,23 @@ function extractSearchTerm(
   return q.trim();
 }
 
-/* ========================================================================== */
-/* WHOLE DOCUMENT SUMMARY                                                     */
-/* ========================================================================== */
+/* ==========================================================================
+   WHOLE DOCUMENT SUMMARY
+   ========================================================================== */
+
 async function summarizeDocument(
   userId: string,
   documentId: string
 ) {
-  console.log("RAG MODE: WHOLE DOCUMENT SUMMARY");
-
-  const chunks = await getDocumentChunks(
-    userId,
-    documentId
+  console.log(
+    "RAG MODE: WHOLE DOCUMENT SUMMARY"
   );
+
+  const chunks =
+    await getDocumentChunks(
+      userId,
+      documentId
+    );
 
   if (chunks.length === 0) {
     return {
@@ -749,9 +875,13 @@ async function summarizeDocument(
     };
   }
 
-  console.log("SUMMARY CHUNKS:", chunks.length);
+  console.log(
+    "SUMMARY CHUNKS:",
+    chunks.length
+  );
 
-  const context = buildChunkContext(chunks);
+  const context =
+    buildChunkContext(chunks);
 
   console.log(
     "SUMMARY CONTEXT LENGTH:",
@@ -764,7 +894,9 @@ You are Nexora AI, a precise document intelligence assistant.
 Create a complete summary of the ENTIRE document using ONLY the document content provided below.
 
 Do not use outside knowledge.
+
 Do not invent information.
+
 Do not omit important information.
 
 The answer should cover, when present:
@@ -791,6 +923,7 @@ The answer should cover, when present:
 Preserve important information accurately.
 
 Do not mention:
+
 - embeddings
 - vectors
 - retrieval
@@ -837,16 +970,24 @@ FINAL ANSWER:
 
   console.time("SUMMARY LLM");
 
-  const answer = await generateAnswer(prompt);
+  const answer =
+    await generateAnswer(prompt);
 
   console.timeEnd("SUMMARY LLM");
 
-  const citations: RagCitation[] = chunks.map((chunk) => ({
-    documentId: chunk.document_id,
-    documentName: chunk.document_name,
-    pageNumber: chunk.page_number,
-    similarity: 1,
-  }));
+  const citations: RagCitation[] =
+    chunks.map((chunk) => ({
+      documentId:
+        chunk.document_id,
+
+      documentName:
+        chunk.document_name,
+
+      pageNumber:
+        chunk.page_number,
+
+      similarity: 1,
+    }));
 
   return {
     answer,
@@ -854,9 +995,9 @@ FINAL ANSWER:
   };
 }
 
-/* ========================================================================== */
-/* WHOLE DOCUMENT KEY POINTS                                                  */
-/* ========================================================================== */
+/* ==========================================================================
+   WHOLE DOCUMENT KEY POINTS
+   ========================================================================== */
 
 async function extractKeyPoints(
   userId: string,
@@ -866,10 +1007,11 @@ async function extractKeyPoints(
     "RAG MODE: WHOLE DOCUMENT KEY POINTS"
   );
 
-  const chunks = await getDocumentChunks(
-    userId,
-    documentId
-  );
+  const chunks =
+    await getDocumentChunks(
+      userId,
+      documentId
+    );
 
   if (chunks.length === 0) {
     return {
@@ -884,7 +1026,8 @@ async function extractKeyPoints(
     chunks.length
   );
 
-  const context = buildChunkContext(chunks);
+  const context =
+    buildChunkContext(chunks);
 
   console.log(
     "KEY POINT CONTEXT LENGTH:",
@@ -899,7 +1042,9 @@ Extract ALL important key points from the ENTIRE document below.
 Use ONLY the provided document.
 
 Do not use outside knowledge.
+
 Do not invent information.
+
 Do not omit important information.
 
 Extract important:
@@ -938,16 +1083,24 @@ KEY POINTS:
 
   console.time("KEY POINTS LLM");
 
-  const answer = await generateAnswer(prompt);
+  const answer =
+    await generateAnswer(prompt);
 
   console.timeEnd("KEY POINTS LLM");
 
-  const citations: RagCitation[] = chunks.map((chunk) => ({
-    documentId: chunk.document_id,
-    documentName: chunk.document_name,
-    pageNumber: chunk.page_number,
-    similarity: 1,
-  }));
+  const citations: RagCitation[] =
+    chunks.map((chunk) => ({
+      documentId:
+        chunk.document_id,
+
+      documentName:
+        chunk.document_name,
+
+      pageNumber:
+        chunk.page_number,
+
+      similarity: 1,
+    }));
 
   return {
     answer,
@@ -955,9 +1108,9 @@ KEY POINTS:
   };
 }
 
-/* ========================================================================== */
-/* ALL IMPORTANT DATES                                                        */
-/* ========================================================================== */
+/* ==========================================================================
+   ALL IMPORTANT DATES
+   ========================================================================== */
 
 async function findImportantDates(
   userId: string,
@@ -969,11 +1122,9 @@ async function findImportantDates(
 
   /*
    * If a document is selected:
-   *
    * search that entire document.
    *
    * Otherwise:
-   *
    * search all user's documents.
    */
 
@@ -1025,7 +1176,7 @@ async function findImportantDates(
   }
 
   /*
-   * Return the actual document content.
+   * Return actual document content.
    *
    * We intentionally do not ask the LLM
    * to rewrite these results.
@@ -1064,9 +1215,9 @@ ${chunk.content.trim()}`
   };
 }
 
-/* ========================================================================== */
-/* CONTEXT BUILDER                                                            */
-/* ========================================================================== */
+/* ==========================================================================
+   CONTEXT BUILDER
+   ========================================================================== */
 
 function buildChunkContext(
   chunks: DocumentChunk[]
@@ -1085,9 +1236,9 @@ ${chunk.content}`
     .join("\n\n");
 }
 
-/* ========================================================================== */
-/* DATE DETECTION                                                             */
-/* ========================================================================== */
+/* ==========================================================================
+   DATE DETECTION
+   ========================================================================== */
 
 function containsDateInformation(
   text: string
@@ -1117,8 +1268,8 @@ function containsDateInformation(
   /*
    * January
    *
-   * Important because the user wants month searches
-   * even when no year is present.
+   * Important because the user wants month
+   * searches even when no year is present.
    */
 
   const monthPattern =

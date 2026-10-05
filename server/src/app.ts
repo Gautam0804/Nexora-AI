@@ -8,7 +8,7 @@ import searchRoutes from "./routes/search.routes";
 import ragRoutes from "./routes/rag.routes";
 import queryRoutes from "./routes/query.routes";
 import aiQueryRoutes from "./routes/ai-query.routes";
-
+import conversationRoutes from "./routes/conversation.routes";
 const app = express();
 
 const allowedOrigins = (process.env.CORS_ORIGINS || "")
@@ -50,6 +50,10 @@ app.use("/api/search", searchRoutes);
 app.use("/api/rag", ragRoutes);
 app.use("/api/queries", queryRoutes);
 app.use("/api/ai-queries", aiQueryRoutes);
+app.use(
+  "/api/conversations",
+  conversationRoutes
+);
 
 app.get("/api/health", (_req, res) => {
   res.json({
