@@ -928,10 +928,12 @@ export default function Home() {
        * Automatically create a conversation if the user
        * starts typing before explicitly creating one.
        */
-      if (!conversationId) {
-        conversation = await handleCreateConversation(
-          chatDocumentId
-        );
+     if (!conversationId) {
+  conversation =
+    (await handleCreateConversation(
+      chatDocumentId
+    )) ?? null;
+}
 
         if (!conversation) {
           return;
