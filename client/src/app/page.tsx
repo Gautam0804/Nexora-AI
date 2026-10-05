@@ -784,58 +784,61 @@ export default function Home() {
   /* ------------------------------------------------------------------------ */
 
   async function handleCreateConversation(
-    documentId = chatDocumentId
-  ) {
-    const token = getAuthToken();
+  documentId = chatDocumentId
+): Promise<Conversation | null> {
+  const token = getAuthToken();
 
-    if (!token) {
+  if (!token) {
+    router.replace("/login");
+    return null;
+  }
+
+  try {
+    setConversationError("");
+
+    const result = await createConversation(
+      token,
+      documentId || undefined,
+      "New conversation"
+    );
+
+    const conversation = result.conversation;
+
+    setConversations((current) => [
+      conversation,
+      ...current.filter(
+        (item) => item.id !== conversation.id
+      ),
+    ]);
+
+    setActiveConversationId(conversation.id);
+    setActiveConversation(conversation);
+    setConversationMessages([]);
+    setConversationQuestion("");
+    setMobileHistoryOpen(false);
+
+    return conversation;
+  } catch (error) {
+    if (isUnauthorizedError(error)) {
+      clearAuthTokens();
       router.replace("/login");
       return null;
     }
 
-    try {
-      setConversationError("");
+    console.error(
+      "CREATE CONVERSATION ERROR:",
+      error
+    );
 
-      const result = await createConversation(
-        token,
-        documentId || undefined,
-        "New conversation"
-      );
+    setConversationError(
+      error instanceof Error
+        ? error.message
+        : "Failed to create conversation."
+    );
 
-      const conversation = result.conversation;
-
-      setConversations((current) => [
-        conversation,
-        ...current.filter(
-          (item) => item.id !== conversation.id
-        ),
-      ]);
-
-      setActiveConversationId(conversation.id);
-      setActiveConversation(conversation);
-      setConversationMessages([]);
-      setConversationQuestion("");
-      setMobileHistoryOpen(false);
-
-      return conversation;
-    } catch (error) {
-      if (isUnauthorizedError(error)) {
-        clearAuthTokens();
-        router.replace("/login");
-        return;
-      }
-
-      console.error("CREATE CONVERSATION ERROR:", error);
-
-      setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Failed to create conversation."
-      );
-
-      return null;
-    }
+    return null;
   }
+}
 
   async function handleSelectConversation(
     conversationId: string
@@ -928,12 +931,10 @@ export default function Home() {
        * Automatically create a conversation if the user
        * starts typing before explicitly creating one.
        */
-     if (!conversationId) {
-  conversation =
-    (await handleCreateConversation(
-      chatDocumentId
-    )) ?? null;
-}
+      if (!conversationId) {
+        conversation = await handleCreateConversation(
+          chatDocumentId
+        );
 
         if (!conversation) {
           return;
