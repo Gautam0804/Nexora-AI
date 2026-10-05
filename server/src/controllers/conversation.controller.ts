@@ -27,6 +27,16 @@ function getUserId(
   return req.userId ?? null;
 }
 
+function getConversationId(
+  req: AuthenticatedRequest
+): string | null {
+  const value = req.params.conversationId;
+
+  return typeof value === "string"
+    ? value
+    : null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Create Conversation                                                        */
 /* POST /api/conversations                                                     */
@@ -132,9 +142,8 @@ export async function getConversation(
       });
     }
 
-    const {
-      conversationId,
-    } = req.params;
+    const conversationId =
+      getConversationId(req);
 
     if (!conversationId) {
       return res.status(400).json({
@@ -188,9 +197,8 @@ export async function sendMessage(
       });
     }
 
-    const {
-      conversationId,
-    } = req.params;
+    const conversationId =
+      getConversationId(req);
 
     const {
       question,
@@ -272,9 +280,8 @@ export async function renameConversationController(
       });
     }
 
-    const {
-      conversationId,
-    } = req.params;
+    const conversationId =
+      getConversationId(req);
 
     const {
       title,
@@ -344,9 +351,8 @@ export async function deleteConversation(
       });
     }
 
-    const {
-      conversationId,
-    } = req.params;
+    const conversationId =
+      getConversationId(req);
 
     if (!conversationId) {
       return res.status(400).json({
