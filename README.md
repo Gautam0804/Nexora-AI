@@ -733,4 +733,5 @@ A formal open-source license can be added before public production release.
 Nexora AI is being developed toward a complete document intelligence platform where users can upload knowledge, search it semantically, ask questions across documents, and receive answers grounded in the original source material.
 The goal is not simply to build another AI chatbot.
 The goal is to demonstrate how modern web engineering, secure backend architecture, vector search, and practical AI systems can work together to solve a real problem.
+
 ☕ Built with code, curiosity & chai.
