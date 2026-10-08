@@ -1107,9 +1107,8 @@ KEY POINTS:
     citations,
   };
 }
-
 /* ==========================================================================
-   ALL IMPORTANT DATES
+   IMPORTANT DATES
    ========================================================================== */
 
 async function findImportantDates(
@@ -1117,16 +1116,8 @@ async function findImportantDates(
   documentId?: string
 ) {
   console.log(
-    "RAG MODE: ALL DOCUMENT DATES"
+    "RAG MODE: IMPORTANT DATES"
   );
-
-  /*
-   * If a document is selected:
-   * search that entire document.
-   *
-   * Otherwise:
-   * search all user's documents.
-   */
 
   const chunks = documentId
     ? await getDocumentChunks(
@@ -1139,64 +1130,70 @@ async function findImportantDates(
 
   if (chunks.length === 0) {
     return {
-      answer:
-        "No document content was found.",
+      answer: documentId
+        ? "The selected document does not contain any information to search for important dates."
+        : "Your documents do not contain any information to search for important dates.",
       citations: [],
     };
   }
 
-  /*
-   * Find every chunk containing:
-   *
-   * DD Month YYYY
-   * DD/MM/YYYY
-   * Month YYYY
-   * Month
-   * YYYY
-   */
+  const datePatterns = [
+    /\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/gi,
 
-  const dateChunks =
-    chunks.filter((chunk) =>
-      containsDateInformation(
-        chunk.content
-      )
-    );
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*|\s+)\d{4}\b/gi,
 
-  console.log(
-    "DATE CANDIDATE CHUNKS:",
-    dateChunks.length
-  );
+    /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g,
 
-  if (dateChunks.length === 0) {
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/gi,
+  ];
+
+  const results: Array<{
+    chunk: DocumentChunk;
+    dates: string[];
+  }> = [];
+
+  for (const chunk of chunks) {
+    const dates = new Set<string>();
+
+    for (const pattern of datePatterns) {
+      const matches =
+        chunk.content.match(pattern) ?? [];
+
+      for (const match of matches) {
+        dates.add(match.trim());
+      }
+    }
+
+    if (dates.size > 0) {
+      results.push({
+        chunk,
+        dates: Array.from(dates),
+      });
+    }
+  }
+
+  if (results.length === 0) {
     return {
-      answer:
-        "No dates, months, or years were found in the document.",
+      answer: documentId
+        ? "I couldn't find any explicit dates in the selected document."
+        : "I couldn't find any explicit dates in your documents.",
       citations: [],
     };
   }
 
-  /*
-   * Return actual document content.
-   *
-   * We intentionally do not ask the LLM
-   * to rewrite these results.
-   *
-   * This ensures that ALL matching points
-   * remain visible.
-   */
-
-  const answer =
-    dateChunks
-      .map(
-        (chunk, index) =>
-          `${index + 1}. ${chunk.document_name} — Page ${chunk.page_number}
-
-${chunk.content.trim()}`
-      )
-      .join("\n\n");
+  const answer = results
+    .map(({ chunk, dates }) => {
+      return [
+        `### ${chunk.document_name} — Page ${chunk.page_number}`,
+        ...dates.map(
+          (date) => `- ${date}`
+        ),
+      ].join("\n");
+    })
+    .join("\n\n");
 
   const citations: RagCitation[] =
-    dateChunks.map((chunk) => ({
+    results.map(({ chunk }) => ({
       documentId:
         chunk.document_id,
 
@@ -1214,7 +1211,6 @@ ${chunk.content.trim()}`
     citations,
   };
 }
-
 /* ==========================================================================
    CONTEXT BUILDER
    ========================================================================== */
