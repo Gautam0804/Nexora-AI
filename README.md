@@ -31,14 +31,6 @@
 
 ---
 
-## 📸 Screenshots
-
-<!-- TODO: add real screenshots to /docs -->
-| Login | Document Library | Answer with Citations |
-|:---:|:---:|:---:|
-| ![Login](./docs/login.png) | ![Documents](./docs/documents.png) | ![Answer](./docs/answer.png) |
-
----
 
 ## 💡 The Problem
 
