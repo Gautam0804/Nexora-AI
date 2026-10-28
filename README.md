@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" />
   <img src="https://img.shields.io/badge/Ollama-Qwen_2.5-orange" />
   <!-- TODO: add after setting up GitHub Actions -->
-  <!-- <img src="https://github.com/YOUR_USERNAME/nexora-ai/actions/workflows/ci.yml/badge.svg" /> -->
+  <!-- <img src="https://github.com/Gautam0804/nexora-ai/actions/workflows/ci.yml/badge.svg" /> -->
 </p>
 
 <p align="center">
@@ -28,8 +28,6 @@
 
 <!-- TODO: record a 10-15s GIF: upload PDF -> ask question -> cited answer -->
 ![Nexora AI Demo](./docs/demo.gif)
-
----
 
 
 ## 💡 The Problem
@@ -269,7 +267,7 @@ nexora-ai/
 **Prerequisites:** Node.js, npm, Python 3.10+, PostgreSQL with pgvector (or Supabase), Ollama, Git
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nexora-ai.git
+git clone https://github.com/Gautam0804/nexora-ai.git
 cd nexora-ai
 ```
 
@@ -354,9 +352,12 @@ Being upfront about the current scope:
 
 ## 👨‍💻 Author
 
-**Gautam Kumar Yadav**: Software Engineer · Full-Stack · AI/ML
+**Gautam Kumar Yadav** · Full-Stack & AI Engineer
 
-[LinkedIn](https://www.linkedin.com/in/gautam-yadav-10922726b) · [Portfolio](https://gautam-portfolio-self.vercel.app/) · [Email](mailto:gautamcodesin@gmail.com)
+[![GitHub](https://img.shields.io/badge/GitHub-Gautam0804-181717?style=flat&logo=github&logoColor=white)](https://github.com/Gautam0804)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Gautam_Yadav-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/gautam-yadav-10922726b)
+[![Portfolio](https://img.shields.io/badge/Portfolio-Visit-000000?style=flat&logo=vercel&logoColor=white)](https://gautam-portfolio-self.vercel.app/)
+[![Email](https://img.shields.io/badge/Email-gautamcodesin@gmail.com-D14836?style=flat&logo=gmail&logoColor=white)](mailto:gautamcodesin@gmail.com)
 
 ---
 
