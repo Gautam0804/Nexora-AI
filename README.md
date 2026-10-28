@@ -1,737 +1,373 @@
-# 🧠 Nexora AI — AI-Powered Document Intelligence & RAG Platform
+<h1 align="center">🧠 Nexora AI</h1>
 
-> **Upload documents. Search them semantically. Ask questions. Get grounded answers with source citations.**
+<p align="center">
+  <b>Chat with your PDFs. Get answers grounded in your documents, with page-level citations.</b><br/>
+  A full-stack RAG platform with a dedicated ML microservice and 100% local LLM inference.
+</p>
 
-Nexora AI is a **full-stack AI document intelligence platform** that transforms PDFs into searchable, queryable knowledge.
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-black?logo=nextdotjs" />
+  <img src="https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/pgvector-336791" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/Ollama-Qwen_2.5-orange" />
+  <!-- TODO: add after setting up GitHub Actions -->
+  <!-- <img src="https://github.com/YOUR_USERNAME/nexora-ai/actions/workflows/ci.yml/badge.svg" /> -->
+</p>
 
-Instead of simply sending documents to an LLM, Nexora AI implements an end-to-end **Retrieval-Augmented Generation (RAG)** pipeline:
+<p align="center">
+  <a href="YOUR_LIVE_DEMO_LINK">🌐 Live Demo</a> ·
+  <a href="YOUR_VIDEO_LINK">🎥 Demo Video</a> ·
+  <a href="#-architecture">🏗️ Architecture</a> ·
+  <a href="#-performance--evaluation">📊 Results</a> ·
+  <a href="#-known-limitations">⚠️ Limitations</a>
+</p>
 
-**PDF → Text Extraction → Chunking → Embeddings → pgvector → Semantic Retrieval → RAG → Local LLM → Source Citations**
-
-The platform combines **Next.js, React, Node.js, Express.js, PostgreSQL, pgvector, Python, FastAPI, Sentence Transformers, Supabase Storage, and Ollama** into a modular AI architecture.
-
----
-
-## 🎯 Why Nexora AI?
-
-Nexora AI was built to demonstrate practical **AI engineering, backend development, database design, security, and system architecture** rather than simply integrating an LLM API.
-
-The project focuses on:
-
-- 📄 Secure PDF ingestion and processing
-- 🧩 Intelligent text chunking
-- 🧠 Semantic embeddings
-- 🔎 Vector similarity search
-- 📚 Retrieval-Augmented Generation
-- 🤖 Local LLM inference
-- 📌 Source-level citations
-- 🗄️ PostgreSQL + pgvector
-- 🔐 User-level document isolation
-- ⚡ Dedicated Python ML service
-- ☁️ Private cloud document storage
-- 🏗️ Modular service architecture
+<!-- TODO: record a 10-15s GIF: upload PDF -> ask question -> cited answer -->
+![Nexora AI Demo](./docs/demo.gif)
 
 ---
 
-# ✨ Key Features
+## 📸 Screenshots
 
-## 🔐 Authentication & Authorization
-
-- User registration and login
-- JWT-based authentication
-- Password hashing with bcrypt
-- Protected API routes
-- Bearer token authorization
-- User-level resource ownership
-- Secure document access validation
+<!-- TODO: add real screenshots to /docs -->
+| Login | Document Library | Answer with Citations |
+|:---:|:---:|:---:|
+| ![Login](./docs/login.png) | ![Documents](./docs/documents.png) | ![Answer](./docs/answer.png) |
 
 ---
 
-## 📄 Document Intelligence
+## 💡 The Problem
 
-- PDF upload
-- Private document storage
-- PDF text extraction
-- Page-level processing
-- Document metadata
-- Processing status tracking
-- Page and chunk statistics
-- Secure document deletion
-- Secure document preview
+LLMs hallucinate, and pasting entire documents into a prompt is slow, costly, and
+sends private data to third parties. Nexora AI retrieves **only the relevant passages**
+from a user's own PDFs and generates answers **with traceable sources**, running the
+LLM locally so documents never leave the user's infrastructure.
+
+## ⚡ What It Does
+
+- 📄 Upload PDFs to **private, per-user storage**
+- 🔎 **Semantic search** by meaning, not just keywords
+- 🤖 Ask questions in natural language and get **grounded answers**
+- 📌 Every answer includes **citations**: document, page number, similarity score
+- 🔐 **Strict user isolation**: no user can access another user's documents
+- 🏠 **Local LLM inference** via Ollama, so no data goes to third-party AI APIs
+- ⚙️ Tracks the processing lifecycle of every document (`processing → processed / failed`)
 
 ---
 
-## 🧩 Intelligent Text Processing
-
-Documents are processed into smaller overlapping chunks before generating embeddings.
-
-Current configuration:
+## 🏗️ Architecture
 
 ```text
-Chunk size: 1000 characters
-Overlap:    150 characters
+                 ┌───────────────────────┐
+                 │      Next.js UI       │
+                 │   React + TypeScript  │
+                 └───────────┬───────────┘
+                             │
+                             ▼
+                 ┌───────────────────────┐        ┌──────────────────────┐
+                 │   Node.js + Express   │───────►│   Supabase Storage   │
+                 │       REST API        │        │ Private PDFs + signed│
+                 └──────┬─────────┬──────┘        │         URLs         │
+                        │         │               └──────────────────────┘
+          ┌─────────────┘         └───────────────┐
+          ▼                                       ▼
+┌────────────────────┐                  ┌────────────────────┐
+│ PostgreSQL+pgvector│                  │  Python + FastAPI  │
+│ users, documents,  │                  │    ML Service      │
+│ chunks, 384-d      │                  │ BGE-small-en-v1.5  │
+│ embeddings         │                  │  (384-d vectors)   │
+└────────────────────┘                  └────────────────────┘
+          │
+          │ top-k retrieved chunks → context builder
+          ▼
+┌────────────────────┐
+│  Ollama · Qwen 2.5 │──► Grounded answer + citations
+│        3B          │
+└────────────────────┘
+```
 
-Chunk overlap helps preserve contextual information between neighboring chunks during retrieval.
-🧠 Semantic Embeddings
-Nexora AI uses:
-BAAI/bge-small-en-v1.5
-to convert document chunks and user queries into 384-dimensional embeddings.
-Embedding generation is handled through a dedicated Python + FastAPI ML service.
-Node.js
-   ↓
-FastAPI ML Service
-   ↓
-Sentence Transformers
-   ↓
-BGE-small-en-v1.5
-   ↓
-384D Embedding
+### RAG pipeline
 
-🔎 Semantic Search
-Nexora AI uses PostgreSQL + pgvector for semantic vector search.
-Instead of depending only on exact keyword matches, user queries are converted into embeddings and compared against stored document embeddings.
-User Query
-    ↓
-Query Embedding
-    ↓
-pgvector Similarity Search
-    ↓
-Relevant Document Chunks
+```text
+Ingestion:  PDF → page extraction → overlapping chunks (1000 / 150) → embeddings → pgvector
+Query:      Question → query embedding → pgvector similarity search → top-k chunks
+            → context builder → Qwen 2.5 3B → cited answer
+```
 
-🤖 Retrieval-Augmented Generation
-The core AI pipeline combines semantic retrieval with local LLM generation.
-                    User Question
-                          │
-                          ▼
-                  Query Embedding
-                          │
-                          ▼
-                  pgvector Search
-                          │
-                          ▼
-                  Relevant Chunks
-                          │
-                          ▼
-                   Context Builder
-                          │
-                          ▼
-                  Ollama / Qwen 2.5 3B
-                          │
-                          ▼
-                  Grounded Answer
-                          │
-                          ▼
-                    Citations
+### Document lifecycle
 
-The LLM is instructed to use the retrieved document context when generating answers.
-This allows Nexora AI to provide responses grounded in the user's uploaded documents.
-📌 Source Citations
-Generated answers maintain source information including:
-- Document ID
-- Document name
-- Page number
-- Similarity score
-This makes responses easier to trace back to the original document content.
-Example flow:
-Question
-   ↓
-Relevant Chunk
-   ↓
-Document + Page Metadata
-   ↓
-LLM Context
-   ↓
-Answer
-   ↓
-Source Citation
+```text
+uploaded → processing → processed
+                     ↘ failed
+```
 
-🏗️ System Architecture
-                    ┌───────────────────────┐
-                    │      Next.js UI       │
-                    │   React + TypeScript  │
-                    └───────────┬───────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │   Node.js + Express   │
-                    │       REST API        │
-                    └───────┬───────┬───────┘
-                            │       │
-                ┌───────────┘       └──────────────┐
-                ▼                                  ▼
-       ┌──────────────────┐              ┌──────────────────┐
-       │   PostgreSQL     │              │ Supabase Storage │
-       │    + pgvector    │              │   Private PDFs   │
-       └────────┬─────────┘              └──────────────────┘
-                │
-                │ Vector Search
-                ▼
-       ┌──────────────────┐
-       │ Python + FastAPI │
-       │   ML Service     │
-       └────────┬─────────┘
-                │
-                ▼
-       ┌──────────────────────┐
-       │ Sentence Transformers│
-       │ BGE-small-en-v1.5    │
-       │    384D Embeddings   │
-       └──────────────────────┘
+Tracked per document: status, page count, chunk count, created/updated timestamps.
 
-                RAG Context
-                    │
-                    ▼
-          ┌──────────────────┐
-          │      Ollama      │
-          │   Qwen 2.5 3B   │
-          └────────┬─────────┘
-                   │
-                   ▼
-             Cited Answer
+---
 
-🔄 End-to-End Document Pipeline
-1. Authentication
-Register
-   ↓
-Password Hashing
-   ↓
-PostgreSQL
-   ↓
-Login
-   ↓
-JWT Token
-   ↓
-Protected Requests
+## 🧩 Engineering Highlights
 
-Passwords are never stored directly.
-2. Document Upload
-Next.js
-   ↓
-POST /api/documents
-   ↓
-JWT Authentication
-   ↓
-Multer Upload Handling
-   ↓
-Supabase Private Storage
-   ↓
-Document Metadata → PostgreSQL
-   ↓
-Status = processing
+| Area | What I built | Why it matters |
+|---|---|---|
+| **Service separation** | Python/FastAPI embedding service, separate from the Node API | Clean boundary between app logic and ML; the model can scale or be swapped independently |
+| **Vector search** | pgvector inside PostgreSQL | One database for relational and vector data, no extra infrastructure |
+| **Chunking** | 1000-char chunks with 150-char overlap | Preserves context across chunk boundaries and improves retrieval |
+| **Normalized embeddings** | Vectors normalized before storage | Consistent similarity scoring |
+| **Security** | JWT + bcrypt, ownership check on every query (`WHERE d.id = $1 AND d.user_id = $2`), parameterized SQL, private bucket, short-lived signed URLs | Prevents cross-user data access and SQL injection |
+| **Hallucination control** | LLM instructed to answer from retrieved context only, returned with sources | Users can verify every claim |
+| **Data integrity** | Foreign keys + cascading cleanup | No orphaned chunks or queries |
+| **Privacy** | Local LLM inference with Ollama | Document content never sent to external AI APIs |
 
-3. PDF Processing
-PDF
- ↓
-Text Extraction
- ↓
-Page Extraction
- ↓
-Chunking
- ↓
-Overlapping Chunks
- ↓
-Embedding Generation
- ↓
-PostgreSQL + pgvector
+---
 
-4. Embedding Generation
-Node.js
-   ↓
-POST /embed
-   ↓
-FastAPI
-   ↓
-Sentence Transformers
-   ↓
-BAAI/bge-small-en-v1.5
-   ↓
-384D Vector
-   ↓
-PostgreSQL + pgvector
+## 📊 Performance & Evaluation
 
-Embeddings are normalized before storage.
-5. Semantic Retrieval
-Natural Language Query
-        ↓
-Query Embedding
-        ↓
-pgvector Similarity Search
-        ↓
-Relevant Chunks
-        ↓
-Similarity Ranking
+> Numbers below were measured on my machine: `<CPU / RAM / GPU>`.
+> <!-- TODO: replace every XX with a value you actually measured. Delete rows you did not measure. -->
 
-6. RAG Generation
-User Question
-      ↓
-Query Embedding
-      ↓
-Vector Search
-      ↓
-Relevant Context
-      ↓
-Ollama
-      ↓
-Qwen 2.5 3B
-      ↓
-Grounded Answer
-      ↓
-Source Citations
+### Performance
 
-🔒 Security & Data Isolation
-Security is treated as part of the application architecture.
-Authentication
-- JWT authentication
-- bcrypt password hashing
-- Protected routes
-- Bearer token authorization
-Authorization
-Document operations are scoped to the authenticated user.
-For example:
+| Metric | Result |
+|---|---|
+| Test corpus | XX PDFs · XX pages · XX chunks |
+| PDF ingestion (extract + chunk + embed) | ~XX s for a XX-page PDF |
+| Query embedding latency | ~XX ms |
+| pgvector similarity search | ~XX ms over XX chunks |
+| End-to-end answer latency (Qwen 2.5 3B, local) | ~XX s |
+
+### Retrieval quality
+
+I wrote XX questions with known answers across XX PDFs and checked whether the correct
+source chunk appeared in the top-k results.
+
+| Metric | Result |
+|---|---|
+| Correct source in top-1 | XX / XX |
+| Correct source in top-3 | XX / XX |
+| Correct source in top-5 | XX / XX |
+
+---
+
+## 🔒 Security & Data Isolation
+
+**Authentication**
+- JWT authentication with bearer tokens
+- bcrypt password hashing (passwords are never stored directly)
+- Protected API routes
+
+**Authorization**
+- Every document operation is scoped to the authenticated user:
+  listing, deletion, preview, and semantic search
+- Ownership enforced at the **query level**, not only in middleware:
+
+```sql
 WHERE d.id = $1
-AND d.user_id = $2
+  AND d.user_id = $2
+```
 
-This ownership model is applied to operations including:
-- Document listing
-- Document deletion
-- Document preview
-- Semantic search
-Storage Security
+**Storage**
 - Private Supabase Storage bucket
-- Ownership verification
-- Signed URLs
-- Short-lived preview access
-Database Security
+- Ownership verification before access
+- Short-lived signed URLs for previews
+
+**Database & Config**
 - Parameterized SQL queries
-- Foreign key relationships
-- Cascading cleanup
-- User-scoped queries
-Configuration Security
-Sensitive credentials are stored through environment variables rather than committed to source control.
-⚙️ Processing Lifecycle
-Documents follow a controlled processing lifecycle:
-uploaded
-    ↓
-processing
-    ↓
-processed
+- Foreign keys with cascading cleanup
+- Secrets via environment variables, never committed
 
-If processing fails:
-processing
-    ↓
-failed
+---
 
-The system tracks:
-- Processing status
-- Page count
-- Chunk count
-- Creation timestamp
-- Update timestamp
-🛠️ Technology Stack
-Frontend
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- App Router
-Backend
-- Node.js
-- Express.js
-- TypeScript
-- JWT
-- bcrypt
-- Multer
-- REST APIs
-Database
-- PostgreSQL
-- pgvector
-- Supabase PostgreSQL
-Storage
-- Supabase Storage
-- Private buckets
-- Signed URLs
-AI / ML
-- Python
-- FastAPI
-- Sentence Transformers
-- BAAI/bge-small-en-v1.5
-- 384-dimensional embeddings
-- Ollama
-- Qwen 2.5 3B
-- Retrieval-Augmented Generation
-📂 Project Structure
-nexora-ai/
-│
-├── client/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── auth/
-│   │   │   ├── globals.css
-│   │   │   ├── layout.tsx
-│   │   │   └── page.tsx
-│   │   │
-│   │   └── lib/
-│   │       └── api.ts
-│   │
-│   ├── public/
-│   ├── .env.local
-│   └── package.json
-│
-├── server/
-│   ├── src/
-│   │   ├── config/
-│   │   │   ├── db.ts
-│   │   │   └── supabase.ts
-│   │   │
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── app.ts
-│   │   └── server.ts
-│   │
-│   ├── .env
-│   └── package.json
-│
-└── ml-service/
-    ├── main.py
-    └── requirements.txt
+## 🛠️ Tech Stack
 
-🔌 API Overview
-Authentication
-POST /api/auth/register
-POST /api/auth/login
+| Layer | Technologies |
+|---|---|
+| **Frontend** | Next.js (App Router), React, TypeScript, Tailwind CSS |
+| **Backend** | Node.js, Express.js, TypeScript, JWT, bcrypt, Multer, REST APIs |
+| **Database** | PostgreSQL, pgvector, Supabase PostgreSQL |
+| **Storage** | Supabase Storage (private buckets, signed URLs) |
+| **AI / ML** | Python, FastAPI, Sentence Transformers, BAAI/bge-small-en-v1.5 (384-d), Ollama, Qwen 2.5 3B |
 
-Documents
-GET    /api/documents
-POST   /api/documents
-DELETE /api/documents/:id
-GET    /api/documents/:id/preview
+---
 
-RAG
+## 🔌 API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Create account |
+| POST | `/api/auth/login` | Login, returns JWT |
+| GET | `/api/documents` | List the user's documents |
+| POST | `/api/documents` | Upload and process a PDF |
+| GET | `/api/documents/:id/preview` | Signed preview URL |
+| DELETE | `/api/documents/:id` | Delete document, file, and chunks |
+| POST | `/api/rag/ask` | Ask a question, returns answer + citations |
+| GET | `/api/queries/stats` | Query statistics |
+
+Protected endpoints require:
+
+```text
+Authorization: Bearer <token>
+```
+
+### Example
+
+```http
 POST /api/rag/ask
-
-Query Statistics
-GET /api/queries/stats
-
-Protected endpoints use:
 Authorization: Bearer <token>
 
-🗄️ Database Design
-Users
-users
-├── id
-├── email
-├── password_hash
-└── created_at
+{ "question": "What is binary search?" }
+```
 
-Documents
-documents
-├── id
-├── user_id
-├── name
-├── file_url
-├── file_type
-├── status
-├── page_count
-├── chunk_count
-├── created_at
-└── updated_at
+<!-- TODO: paste your real response shape here -->
+```json
+{
+  "answer": "Binary search is ...",
+  "sources": [
+    { "documentId": "...", "documentName": "DSA_Cheat_Sheet.pdf", "page": 4, "score": 0.82 }
+  ]
+}
+```
 
-Document Chunks
-document_chunks
-├── id
-├── document_id
-├── content
-├── page_number
-├── chunk_index
-├── embedding VECTOR(384)
-└── created_at
+---
 
-AI Queries
-ai_queries
-├── id
-├── user_id
-├── question
-└── created_at
+## 🗄️ Database Design
 
-Foreign keys and cascading cleanup maintain relationships between users, documents, chunks, and queries.
-🌐 Environment Configuration
-Server
-Create:
-server/.env
+```text
+users              id, email, password_hash, created_at
+documents          id, user_id, name, file_url, file_type, status,
+                   page_count, chunk_count, created_at, updated_at
+document_chunks    id, document_id, content, page_number, chunk_index,
+                   embedding VECTOR(384), created_at
+ai_queries         id, user_id, question, created_at
+```
 
+Foreign keys and cascading deletes link users → documents → chunks and users → queries.
+
+---
+
+## 📂 Project Structure
+
+```text
+nexora-ai/
+├── client/                 # Next.js frontend
+│   └── src/
+│       ├── app/            # App Router pages (auth, layout, home)
+│       └── lib/api.ts      # API client
+├── server/                 # Express REST API
+│   └── src/
+│       ├── config/         # db.ts, supabase.ts
+│       ├── controllers/
+│       ├── middleware/
+│       ├── routes/
+│       ├── services/
+│       ├── app.ts
+│       └── server.ts
+└── ml-service/             # FastAPI embedding service
+    ├── main.py
+    └── requirements.txt
+```
+
+---
+
+## 🚀 Run Locally
+
+**Prerequisites:** Node.js, npm, Python 3.10+, PostgreSQL with pgvector (or Supabase), Ollama, Git
+
+```bash
+git clone https://github.com/YOUR_USERNAME/nexora-ai.git
+cd nexora-ai
+```
+
+| Service | Command | Port |
+|---|---|---|
+| API | `cd server && npm install && npm run dev` | 5000 |
+| Frontend | `cd client && npm install && npm run dev` | 3000 |
+| ML service | `cd ml-service && pip install -r requirements.txt && python -m uvicorn main:app --reload --port 8000` | 8000 |
+| Local LLM | `ollama pull qwen2.5:3b` | 11434 |
+
+<details>
+<summary><b>Environment variables</b></summary>
+
+`server/.env`
+```env
 PORT=5000
 DATABASE_URL=your_database_url
 JWT_SECRET=your_jwt_secret
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
 
-Client
-Create:
-client/.env.local
-
+`client/.env.local`
+```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
+```
 
-⚠️ Never commit real credentials, JWT secrets, or Supabase service-role keys to GitHub.
+> ⚠️ Never commit real credentials, JWT secrets, or Supabase service-role keys.
+</details>
 
-🚀 Local Development
-Prerequisites
-Install:
-- Node.js
-- npm
-- Python 3.10+
-- PostgreSQL / Supabase
-- Ollama
-- Git
-1. Clone Repository
-git clone https://github.com/YOUR_USERNAME/nexora-ai.git
-cd nexora-ai
+### 🧪 Try it
 
-Replace YOUR_USERNAME with your actual GitHub repository URL.
+1. Register and log in
+2. Upload a PDF (for example `DSA_Cheat_Sheet.pdf`)
+3. Wait for status `processed`
+4. Ask: *"What is binary search?"*
+5. Check the answer and its page citations
 
-2. Start Backend
-cd server
-npm install
-npm run dev
+<!-- TODO (optional): add a one-command Docker Compose setup and document it here -->
 
-Backend:
-http://localhost:5000
+---
 
-3. Start Frontend
-cd client
-npm install
-npm run dev
+## ⚠️ Known Limitations
 
-Frontend:
-http://localhost:3000
+Being upfront about the current scope:
 
-4. Start ML Service
-cd ml-service
+- **PDF only.** Other formats (DOCX, TXT, etc.) are not supported yet.
+- **No OCR.** Scanned or image-only PDFs may not yield usable text.
+- **Small local model.** Qwen 2.5 3B is fast and private but can miss nuance or make mistakes on complex questions. Citations are there so answers can be verified.
+- **Single-document focus.** Multi-document search and comparison are planned.
+- **Synchronous processing.** Ingestion is not yet handled by a background job queue.
+- **No automated test suite or CI yet.**
+<!-- TODO: edit this list to match reality as you add features -->
 
-pip install -r requirements.txt
+---
 
-python -m uvicorn main:app --reload --port 8000
+## 🛣️ Roadmap
 
-ML service:
-http://localhost:8000
+- [ ] Multi-document search and document comparison
+- [ ] Hybrid search (full-text + vector) with re-ranking
+- [ ] HNSW vector indexing and query benchmarks
+- [ ] Background processing jobs (Redis queue)
+- [ ] Document summarization
+- [ ] Clickable citations that open the source page
+- [ ] Rate limiting
+- [ ] Automated tests and CI/CD (GitHub Actions)
+- [ ] Docker Compose and production deployment (AWS)
+- [ ] Monitoring and logging
 
-5. Start Ollama
-Pull the configured model:
-ollama pull qwen2.5:3b
+---
 
-Ollama provides the local LLM inference layer for the RAG pipeline.
-🔗 Local Services
-Service	Port	Responsibility
-Next.js	3000	Frontend
-Express	5000	REST API
-FastAPI	8000	Embedding service
-Ollama	11434	Local LLM
-PostgreSQL	—	Application + vector data
-Supabase Storage	—	Private document storage
+## 📚 What I Learned
 
+- Chunk size and overlap directly affect retrieval quality
+- Why a separate ML service keeps the main backend simple
+- Enforcing authorization at the **query level**, not only in middleware
+- Trade-offs between small local models and hosted LLM APIs
+- Designing a processing lifecycle so failures are visible and recoverable
+<!-- TODO: adjust to your real experience -->
 
-🧪 Example Workflow
-Upload:
-DSA_Cheat_Sheet.pdf
+---
 
-Then ask:
-What is binary search?
+## 👨‍💻 Author
 
-Nexora processes the request through:
-PDF
- ↓
-Text Extraction
- ↓
-Page Processing
- ↓
-Chunking
- ↓
-BGE Embeddings
- ↓
-pgvector
- ↓
-Semantic Retrieval
- ↓
-Relevant Context
- ↓
-Qwen 2.5 3B
- ↓
-Answer + Page Citation
+**Gautam Kumar Yadav**: Software Engineer · Full-Stack · AI/ML
 
-🧠 Key Engineering Decisions
-Why RAG?
-Instead of sending an entire document directly to an LLM, RAG retrieves only the most relevant information.
-This helps the system:
-- Retrieve relevant context
-- Reduce unnecessary prompt content
-- Ground answers in uploaded documents
-- Provide source references
-Why Embeddings?
-Embeddings represent text as numerical vectors that capture semantic relationships.
-This enables retrieval based on meaning, rather than only exact keyword matches.
-Why pgvector?
-pgvector allows vector search to operate alongside application data inside PostgreSQL.
-This keeps the current architecture relatively simple while providing native vector storage and similarity search capabilities.
-Why a Separate Python ML Service?
-The project separates application responsibilities from ML responsibilities:
-Node.js / Express
-        ↓
-Application Logic
-        ↓
-FastAPI
-        ↓
-Embedding Model
+[LinkedIn](https://www.linkedin.com/in/gautam-yadav-10922726b) · [Portfolio](https://gautam-portfolio-self.vercel.app/) · [Email](mailto:gautamcodesin@gmail.com)
 
-This provides a clear service boundary between the main backend and machine-learning functionality.
-📈 Current Implementation
-✅ Implemented
-- Next.js frontend
-- React UI
-- Express REST API
-- PostgreSQL integration
-- pgvector integration
-- Supabase Storage
-- JWT authentication
-- bcrypt password hashing
-- Protected APIs
-- User-level document ownership
-- PDF upload
-- PDF text extraction
-- Page-level processing
-- Overlapping chunking
-- Python FastAPI ML service
-- Sentence Transformer embeddings
-- 384-dimensional vectors
-- Semantic vector search
-- RAG pipeline
-- Ollama integration
-- Qwen 2.5 3B
-- Source citations
-- AI query persistence
-- Document deletion
-- Secure document preview
-- Processing status
-- Page/chunk metadata
-🛣️ Roadmap
-Planned improvements include:
-- 🔎 Advanced semantic search UI
-- 📑 Search result interface
-- 📌 Citation click-through
-- 📚 Multi-document search
-- 🔄 Document comparison
-- 📝 Document summarization
-- ⚙️ Background processing jobs
-- ⚡ Redis-based infrastructure
-- 🚀 Vector indexing optimization
-- 🔍 Full-text search
-- 🔀 Hybrid search
-- 📊 Query performance optimization
-- 🛡️ Advanced rate limiting
-- 🧪 Automated testing
-- 🐳 Production Docker deployment
-- 🔄 CI/CD
-- ☁️ AWS deployment
-- 📈 Production monitoring and logging
-💼 What Nexora AI Demonstrates
-Frontend Engineering
-- Next.js
-- React
-- TypeScript
-- Responsive UI architecture
-Backend Engineering
-- REST API design
-- Authentication
-- Authorization
-- Service architecture
-- File processing
-Database Engineering
-- PostgreSQL
-- Relational schema design
-- Foreign keys
-- Parameterized queries
-- pgvector
-- Vector similarity search
-AI Engineering
-- Text embeddings
-- Semantic search
-- Chunking strategies
-- Retrieval-Augmented Generation
-- Local LLM inference
-- Context retrieval
-- Grounded responses
-- Source citations
-Security
-- JWT
-- bcrypt
-- User-level ownership
-- Private storage
-- Signed URLs
-- Protected APIs
-System Design
-- Frontend/backend separation
-- Dedicated ML service
-- Storage abstraction
-- Vector retrieval pipeline
-- Modular architecture
-📌 Resume Description
-Developed a full-stack AI document intelligence and RAG platform using Next.js, Node.js, Express.js, PostgreSQL, pgvector, Python, FastAPI, Sentence Transformers, and Ollama. Implemented secure PDF ingestion, page-level text extraction, overlapping chunking, 384-dimensional semantic embeddings, vector similarity search, and Retrieval-Augmented Generation with source-level citations. Designed user-scoped document access using JWT authentication, private Supabase Storage, signed URLs, and parameterized PostgreSQL queries.
+---
 
-🎯 Technical Interview Areas
-Nexora AI provides strong discussion points around:
-- RAG architecture
-- Embeddings
-- Vector similarity
-- Chunk size and overlap
-- pgvector
-- Semantic search
-- Context retrieval
-- LLM hallucination mitigation
-- Citation generation
-- PDF processing
-- JWT authentication
-- Authorization
-- User ownership isolation
-- PostgreSQL schema design
-- FastAPI service separation
-- Local LLM inference
-- Node.js ↔ Python service communication
-The complete AI flow can be explained as:
-PDF
- ↓
-Text Extraction
- ↓
-Chunking
- ↓
-Embedding
- ↓
-Vector Storage
- ↓
-Query Embedding
- ↓
-Similarity Search
- ↓
-Retrieved Context
- ↓
-LLM
- ↓
-Grounded Answer
- ↓
-Citation
+> 🚧 **Status:** Active development. Maintained as a portfolio project; a formal open-source license can be added before public release.
 
-📊 Project Status
-Status: 🚧 Active Development
-Nexora AI currently provides a strong foundation for document intelligence, semantic retrieval, and RAG-based question answering.
-Future development will focus on improving scalability, search quality, observability, automated testing, deployment, and production infrastructure.
-👨‍💻 Author
-Gautam Kumar Yadav
-Software Engineer | Full-Stack Development | Java | DSA | AI/ML
-📄 License
-This project is currently maintained as a portfolio project.
-A formal open-source license can be added before public production release.
-🌟 Vision
-Nexora AI is being developed toward a complete document intelligence platform where users can upload knowledge, search it semantically, ask questions across documents, and receive answers grounded in the original source material.
-The goal is not simply to build another AI chatbot.
-The goal is to demonstrate how modern web engineering, secure backend architecture, vector search, and practical AI systems can work together to solve a real problem.
-
-☕ Built with code, curiosity & chai.
+<p align="center"><i>Built with code, curiosity & chai ☕</i></p>
