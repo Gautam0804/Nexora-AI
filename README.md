@@ -1,4 +1,4 @@
-<h1 align="center">🧠 Nexora AI</h1>
+<h1 align="center"> Nexora AI</h1>
 
 <p align="center">
   <b>Chat with your PDFs. Get answers grounded in your documents, with page-level citations.</b><br/>
